@@ -2,45 +2,44 @@ package main
 
 /*
 #cgo CFLAGS: -x objective-c
-#cgo LDFLAGS: -framework ApplicationServices -framework CoreFoundation
-#include "listener.h"
-extern void activityCallbackBridge();
+#cgo LDFLAGS: -framework Cocoa
+#include <stdlib.h>
+
+const char* GetFrontmostApp();
 */
 import "C"
 import (
-	"context"
 	"fmt"
-	"os/signal"
-	"syscall"
 	"time"
+	"unsafe"
 )
 
 var lastActive time.Time
+var lastApp string
 
-//export activityCallbackBridge
-func activityCallbackBridge() {
-	lastActive = time.Now()
+func getFrontApp() string {
+	cstr := C.GetFrontmostApp()
+	defer C.free(unsafe.Pointer(cstr))
+	return C.GoString(cstr)
 }
 
 func main() {
+	lastApp = getFrontApp()
 	lastActive = time.Now()
-	go func() {
-		for {
-			time.Sleep(10 * time.Second)
-			inactiveFor := time.Since(lastActive)
-			if inactiveFor > 5*time.Minute {
-				fmt.Printf("You’ve been inactive for %v\n", inactiveFor)
-			} else {
-				fmt.Printf("Active (last input %v ago)\n", inactiveFor)
+	fmt.Println("Starting with app", lastApp)
+	for {
+		select {
+		case <-time.After(10 * time.Second):
+			{
+				newApp := getFrontApp()
+				fmt.Println(newApp, lastApp)
+				if newApp != lastApp {
+					oldApp := lastApp
+					lastApp = newApp
+					lastActive = time.Now()
+					fmt.Printf("Changed from app %s to app %s\n", oldApp, newApp)
+				}
 			}
 		}
-	}()
-	C.StartEventTap((*[0]byte)(C.activityCallbackBridge)) // Cast to void*
-	defer C.StopEventTap()
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	<-ctx.Done()
-	fmt.Println("Quitting")
+	}
 }
