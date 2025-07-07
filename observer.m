@@ -1,10 +1,9 @@
 #import <Foundation/Foundation.h>
 #import <AppKit/AppKit.h>
 #include <string.h> // For strdup()
-#include <stdlib.h> // For free() (though not used for returned strdup, good to include)
+#include <stdlib.h> // For free()
 
 // Forward declaration of the Go function
-// It now expects a char* (from strdup)
 extern void goStaticApplicationActivatedCallback(void* bundleIDStrPtr);
 
 // Define the static Objective-C observer instance
@@ -21,16 +20,13 @@ extern void goStaticApplicationActivatedCallback(void* bundleIDStrPtr);
 
     char* cBundleID = NULL;
     if (bundleIdentifier) {
-        // Get the UTF8String C string from NSString
         const char* tempCStr = [bundleIdentifier UTF8String];
         if (tempCStr) {
-            // Duplicate the string. Go will be responsible for freeing this memory.
             cBundleID = strdup(tempCStr);
         }
     }
 
     goStaticApplicationActivatedCallback((void*)cBundleID);
-    // DO NOT free cBundleID here; Go is responsible for it now.
 }
 
 - (void)dealloc {
@@ -69,15 +65,45 @@ void UnregisterObjectiveCObserver(void) {
     }
 }
 
-// --- Exposed functions for Go to call (NSRunLoop management) ---
+// --- RunLoop Management with a "keep-alive" source ---
 
-void RunRunLoopForever(void) {
-    NSLog(@"Objective-C: NSRunLoop running forever.");
-    [[NSRunLoop currentRunLoop] run];
-    NSLog(@"Objective-C: NSRunLoop finished running.");
+// Declare a static CFRunLoopSourceRef to manage its lifecycle.
+static CFRunLoopSourceRef dummyRunLoopSource = NULL;
+
+// Dummy callback for the run loop source
+void DummyRunLoopSourceCallback(void *info) {
+    // This function doesn't need to do anything. Its mere presence keeps the run loop alive.
 }
 
-void StopRunLoop(void) {
-    NSLog(@"Objective-C: NSRunLoop stop requested.");
-    CFRunLoopStop(CFRunLoopGetCurrent());
+void RunMainRunLoopForever(void) {
+    NSLog(@"Objective-C: Main NSRunLoop running forever with keep-alive source.");
+
+    // Get the main run loop
+    CFRunLoopRef mainRunLoop = CFRunLoopGetMain();
+
+    // Create a context for the source (optional, but good practice)
+    CFRunLoopSourceContext context = {0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, DummyRunLoopSourceCallback};
+
+    // Create a dummy run loop source that just keeps the loop alive
+    // Type 0 source: Custom event source that you signal manually.
+    // Order 0: Default order.
+    dummyRunLoopSource = CFRunLoopSourceCreate(kCFAllocatorDefault, 0, &context);
+
+    // Add the source to the main run loop in the default mode
+    CFRunLoopAddSource(mainRunLoop, dummyRunLoopSource, kCFRunLoopDefaultMode);
+
+    // Run the loop. It will now stay alive because of the source.
+    CFRunLoopRun(); // This blocks until CFRunLoopStop is called
+
+    // After CFRunLoopRun returns (i.e., it was stopped), clean up the source
+    CFRunLoopRemoveSource(mainRunLoop, dummyRunLoopSource, kCFRunLoopDefaultMode);
+    CFRelease(dummyRunLoopSource);
+    dummyRunLoopSource = NULL; // Clear the reference
+
+    NSLog(@"Objective-C: Main NSRunLoop finished running.");
+}
+
+void StopMainRunLoop(void) {
+    NSLog(@"Objective-C: Main NSRunLoop stop requested.");
+    CFRunLoopStop(CFRunLoopGetMain());
 }
