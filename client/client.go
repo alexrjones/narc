@@ -98,3 +98,24 @@ func (c *Client) TerminateDaemon() error {
 	}
 	return nil
 }
+
+func (c *Client) GetStatus() (string, error) {
+
+	err := c.ensureDaemonAlive()
+	if err != nil {
+		return "", err
+	}
+	resp, err := c.cl.Get(c.baseURL + "/status")
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("unexpected status code in TerminateDaemon: %d, %s", resp.StatusCode, b)
+	}
+	return string(b), nil
+}

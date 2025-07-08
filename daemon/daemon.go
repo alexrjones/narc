@@ -107,6 +107,13 @@ func (d *Daemon) Run(ctx context.Context) {
 	}()
 }
 
+func (d *Daemon) getStatus() current {
+
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.current
+}
+
 func (d *Daemon) startPeriod(reason narc.ChangeReason) {
 	d.current.periodStart = time.Now()
 	d.current.periodStartReason = reason

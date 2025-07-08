@@ -1,9 +1,11 @@
 package daemon
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/alexrjones/narc"
 )
@@ -24,6 +26,7 @@ func (s *Server) GetHandler() http.Handler {
 	m.Handle("POST /start", http.HandlerFunc(s.HandleStartActivity))
 	m.Handle("POST /end", http.HandlerFunc(s.HandleStopActivity))
 	m.Handle("POST /terminate", http.HandlerFunc(s.HandleTerminate))
+	m.Handle("GET /status", http.HandlerFunc(s.HandleStatus))
 	return m
 }
 
@@ -72,7 +75,22 @@ func (s *Server) HandleTerminate(rw http.ResponseWriter, r *http.Request) {
 	s.termSignal <- struct{}{}
 }
 
+func (s *Server) HandleStatus(rw http.ResponseWriter, r *http.Request) {
+
+	cur := s.d.getStatus()
+	if !cur.valid() {
+		writeString(rw, "No activity set.")
+	} else {
+		writeString(rw, fmt.Sprintf("Current activity: %s\nStarted at: %s\nRunning for: %s", cur.activity, cur.periodStart.Format(time.RFC3339), time.Since(cur.periodStart)))
+	}
+}
+
 func writeOK(rw http.ResponseWriter) {
 	rw.WriteHeader(200)
 	rw.Write([]byte("OK"))
+}
+
+func writeString(rw http.ResponseWriter, s string) {
+	rw.WriteHeader(200)
+	rw.Write([]byte(s))
 }

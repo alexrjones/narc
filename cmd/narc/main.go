@@ -19,6 +19,9 @@ var CLI struct {
 	End struct {
 	} `cmd:"" help:"End the current activity."`
 
+	Status struct {
+	} `cmd:"" help:"Get the current status of the daemon and activity."`
+
 	Daemon struct{} `cmd:"" help:"Start the daemon."`
 
 	Terminate struct {
@@ -45,6 +48,15 @@ func main() {
 			err = client.New(conf.ServerBaseURL, makeDaemon).StopActivity()
 			if err != nil {
 				ctx.Errorf("error starting activity: %s", err)
+			}
+		}
+	case "status":
+		{
+			res, err := client.New(conf.ServerBaseURL, makeDaemon).GetStatus()
+			if err != nil {
+				ctx.Errorf("error getting status: %s", err)
+			} else {
+				ctx.Printf(res)
 			}
 		}
 	case "daemon":
