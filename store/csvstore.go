@@ -32,11 +32,11 @@ func (c *CSV) SaveActivity(ctx context.Context, name string) (daemon.ActivityKey
 func (c *CSV) SavePeriod(ctx context.Context, key daemon.ActivityKey, start, end time.Time, startReason, endReason narc.ChangeReason) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if !c.wroteHeaders {
-		c.wroteHeaders = true
-		c.csvw.Write([]string{"activity", "start", "end", "startReason", "endReason"})
-	}
-	c.csvw.Write([]string{c.activities[int64(key)], start.Format(time.RFC3339), end.Format(time.RFC3339), startReason.String(), endReason.String()})
+	//if !c.wroteHeaders {
+	//	c.wroteHeaders = true
+	//	c.csvw.Write([]string{"activity", "start", "end", "startReason", "endReason"})
+	//}
+	c.csvw.Write([]string{c.activities[int64(key)], start.Format(time.RFC3339), end.Format(time.RFC3339), endReason.String()})
 	c.csvw.Flush()
 	return nil
 }

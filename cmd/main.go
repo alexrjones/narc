@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 	"os/exec"
 
 	"github.com/alecthomas/kong"
@@ -17,6 +18,8 @@ var CLI struct {
 	End struct {
 	} `cmd:"" help:"End the current activity."`
 
+	Daemon struct{} `cmd:"" help:"Start the daemon."`
+
 	Terminate struct {
 	} `cmd:"" help:"Terminate the daemon."`
 }
@@ -27,26 +30,29 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	cl := client.New(conf.ServerBaseURL, makeDaemon)
 	ctx := kong.Parse(&CLI)
 	switch ctx.Command() {
 	case "start <name>":
 		{
-			err = cl.StartActivity(CLI.Start.Name)
+			err = client.New(conf.ServerBaseURL, makeDaemon).StartActivity(CLI.Start.Name)
 			if err != nil {
 				ctx.Errorf("error starting activity: %s", err)
 			}
 		}
 	case "end":
 		{
-			err = cl.StopActivity()
+			err = client.New(conf.ServerBaseURL, makeDaemon).StopActivity()
 			if err != nil {
 				ctx.Errorf("error starting activity: %s", err)
 			}
 		}
+	case "daemon":
+		{
+			daemonMain(conf)
+		}
 	case "terminate":
 		{
-			err = cl.TerminateDaemon()
+			err = client.New(conf.ServerBaseURL, makeDaemon).TerminateDaemon()
 			if err != nil {
 				ctx.Errorf("error terminating daemon: %s", err)
 			}
@@ -56,7 +62,4 @@ func main() {
 	}
 }
 
-func makeDaemon() error {
-	cmd := exec.Command("go", "run", "/Users/alexander.jones/code/external/narc/cmd/daemon")
-	return cmd.Start()
-}
+var makeDaemon = exec.Command(os.Args[0], "daemon").Start

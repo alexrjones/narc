@@ -1,10 +1,8 @@
 package narc
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 )
 
 type StorageType string
@@ -45,7 +43,7 @@ func GetConfig() (*Config, error) {
 	c := &Config{ServerBaseURL: "http://localhost:8080", StorageType: StorageTypeCSV}
 	if c.StorageType == StorageTypeCSV && c.CSVPath == "" {
 		var err error
-		c.CSVPath, err = getDataPath(fmt.Sprintf("%d.csv", time.Now().Unix()))
+		c.CSVPath, err = getDataPath("narc.csv")
 		if err != nil {
 			return nil, err
 		}

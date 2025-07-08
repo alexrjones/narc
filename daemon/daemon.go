@@ -3,6 +3,7 @@ package daemon
 import (
 	"context"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/alexrjones/narc"
@@ -19,6 +20,7 @@ type Store interface {
 type Daemon struct {
 	s       Store
 	current current
+	mu      sync.RWMutex
 }
 
 type current struct {
@@ -33,20 +35,16 @@ func (c current) valid() bool {
 	return c.activity != "" && c.activityKey != 0 && c.periodStart != time.Time{} && c.periodStartReason != 0
 }
 
-const activityNone = "(none)"
-
-func New(ctx context.Context, s Store) (*Daemon, error) {
+func New(s Store) (*Daemon, error) {
 	d := &Daemon{
 		s: s,
-	}
-	err := d.SetActivity(ctx, activityNone)
-	if err != nil {
-		return nil, err
 	}
 	return d, nil
 }
 
 func (d *Daemon) SetActivity(ctx context.Context, name string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
 	if d.current.valid() {
 		err := d.endPeriod(ctx, narc.ChangeReasonActivityChanged)
 		if err != nil {
@@ -66,9 +64,11 @@ func (d *Daemon) SetActivity(ctx context.Context, name string) error {
 	return nil
 }
 
-func (d *Daemon) StopActivity(ctx context.Context) error {
+func (d *Daemon) StopActivity(ctx context.Context, reason narc.ChangeReason) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
 	if d.current.valid() {
-		err := d.endPeriod(ctx, narc.ChangeReasonExplicitStop)
+		err := d.endPeriod(ctx, reason)
 		if err != nil {
 			return err
 		}
@@ -85,14 +85,18 @@ func (d *Daemon) Run(ctx context.Context) {
 			select {
 			case state := <-idleCh:
 				{
-					if state.Active {
-						d.startPeriod(state.ChangeReason)
-					} else {
-						err := d.endPeriod(ctx, state.ChangeReason)
-						if err != nil {
-							log.Printf("Failed to end period: %s", err)
+					d.mu.Lock()
+					if d.current.valid() {
+						if state.Active {
+							d.startPeriod(state.ChangeReason)
+						} else {
+							err := d.endPeriod(ctx, state.ChangeReason)
+							if err != nil {
+								log.Printf("Failed to end period: %s", err)
+							}
 						}
 					}
+					d.mu.Unlock()
 				}
 			case <-ctx.Done():
 				{

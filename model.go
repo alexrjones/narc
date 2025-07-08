@@ -30,6 +30,7 @@ const (
 	ChangeReasonUserIdle        ChangeReason = 4
 	ChangeReasonActivityChanged ChangeReason = 5
 	ChangeReasonExplicitStop    ChangeReason = 6
+	ChangeReasonDaemonExit      ChangeReason = 7
 )
 
 func (cr ChangeReason) String() string {
@@ -46,6 +47,8 @@ func (cr ChangeReason) String() string {
 		return "Activity Changed"
 	case ChangeReasonExplicitStop:
 		return "Explicit Stop"
+	case ChangeReasonDaemonExit:
+		return "Daemon Exit"
 	}
 	return fmt.Sprintf("unknown change reason %d", cr)
 }

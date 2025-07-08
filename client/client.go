@@ -3,7 +3,6 @@ package client
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -26,7 +25,6 @@ func (c *Client) ensureDaemonAlive() error {
 	if err == nil {
 		return nil
 	}
-	log.Print("Detected no daemon is running, trying to start one...")
 	err = c.mkDaemon()
 	if err != nil {
 		return fmt.Errorf("failed to start daemon: %s", err)

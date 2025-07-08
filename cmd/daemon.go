@@ -12,19 +12,14 @@ import (
 
 	"github.com/alexrjones/narc"
 	"github.com/alexrjones/narc/daemon"
-	"github.com/alexrjones/narc/server"
 	"github.com/alexrjones/narc/store"
 )
 
-func main() {
+func daemonMain(c *narc.Config) {
 
-	c, err := narc.GetConfig()
-	if err != nil {
-		log.Fatal(err)
-	}
 	var s daemon.Store
 	if c.StorageType == narc.StorageTypeCSV {
-		f, err := os.OpenFile(c.CSVPath, os.O_RDWR|os.O_CREATE, 0644)
+		f, err := os.OpenFile(c.CSVPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -32,7 +27,7 @@ func main() {
 	} else {
 		panic(fmt.Sprintf("Unknown storage type %s", c.StorageType))
 	}
-	d, err := daemon.New(context.Background(), s)
+	d, err := daemon.New(s)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -40,7 +35,7 @@ func main() {
 
 	port := cmp.Or(c.ServerBaseURL[strings.LastIndex(c.ServerBaseURL, ":")+1:], "8080")
 	channel := make(chan struct{}, 1)
-	serv := server.New(d, channel)
+	serv := daemon.NewServer(d, channel)
 	httpServer := &http.Server{Addr: "0.0.0.0:" + port, Handler: serv.GetHandler()}
 	go func() {
 		httpServer.ListenAndServe()

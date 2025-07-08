@@ -1,19 +1,19 @@
-package server
+package daemon
 
 import (
 	"io"
 	"log"
 	"net/http"
 
-	"github.com/alexrjones/narc/daemon"
+	"github.com/alexrjones/narc"
 )
 
 type Server struct {
-	d          *daemon.Daemon
+	d          *Daemon
 	termSignal chan struct{}
 }
 
-func New(d *daemon.Daemon, termSignal chan struct{}) *Server {
+func NewServer(d *Daemon, termSignal chan struct{}) *Server {
 	return &Server{d: d, termSignal: termSignal}
 }
 
@@ -54,7 +54,7 @@ func (s *Server) HandleStartActivity(rw http.ResponseWriter, r *http.Request) {
 
 func (s *Server) HandleStopActivity(rw http.ResponseWriter, r *http.Request) {
 
-	err := s.d.StopActivity(r.Context())
+	err := s.d.StopActivity(r.Context(), narc.ChangeReasonExplicitStop)
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
 		return
@@ -64,7 +64,7 @@ func (s *Server) HandleStopActivity(rw http.ResponseWriter, r *http.Request) {
 
 func (s *Server) HandleTerminate(rw http.ResponseWriter, r *http.Request) {
 
-	err := s.d.StopActivity(r.Context())
+	err := s.d.StopActivity(r.Context(), narc.ChangeReasonDaemonExit)
 	if err != nil {
 		log.Println("Couldn't stop current activity:", err)
 	}
