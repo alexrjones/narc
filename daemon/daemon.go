@@ -30,7 +30,12 @@ type current struct {
 	periodStart       time.Time
 }
 
-func (c current) valid() bool {
+func (c current) validActivity() bool {
+
+	return c.activity != "" && c.activityKey != 0
+}
+
+func (c current) validPeriod() bool {
 
 	return c.activity != "" && c.activityKey != 0 && c.periodStart != time.Time{} && c.periodStartReason != 0
 }
@@ -45,7 +50,7 @@ func New(s Store) (*Daemon, error) {
 func (d *Daemon) SetActivity(ctx context.Context, name string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	if d.current.valid() {
+	if d.current.validPeriod() {
 		err := d.endPeriod(ctx, narc.ChangeReasonActivityChanged)
 		if err != nil {
 			return err
@@ -67,7 +72,7 @@ func (d *Daemon) SetActivity(ctx context.Context, name string) error {
 func (d *Daemon) StopActivity(ctx context.Context, reason narc.ChangeReason) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	if d.current.valid() {
+	if d.current.validPeriod() {
 		err := d.endPeriod(ctx, reason)
 		if err != nil {
 			return err
@@ -86,10 +91,12 @@ func (d *Daemon) Run(ctx context.Context) {
 			case state := <-idleCh:
 				{
 					d.mu.Lock()
-					if d.current.valid() {
-						if state.Active {
+					if state.Active {
+						if d.current.validActivity() {
 							d.startPeriod(state.ChangeReason)
-						} else {
+						}
+					} else {
+						if d.current.validPeriod() {
 							err := d.endPeriod(ctx, state.ChangeReason)
 							if err != nil {
 								log.Printf("Failed to end period: %s", err)

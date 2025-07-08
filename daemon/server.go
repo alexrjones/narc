@@ -78,7 +78,7 @@ func (s *Server) HandleTerminate(rw http.ResponseWriter, r *http.Request) {
 func (s *Server) HandleStatus(rw http.ResponseWriter, r *http.Request) {
 
 	cur := s.d.getStatus()
-	if !cur.valid() {
+	if !cur.validPeriod() {
 		writeString(rw, "No activity set.")
 	} else {
 		writeString(rw, fmt.Sprintf("Current activity: %s\nStarted at: %s\nRunning for: %s", cur.activity, cur.periodStart.Format(time.RFC3339), time.Since(cur.periodStart)))
