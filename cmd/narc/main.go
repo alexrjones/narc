@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/alecthomas/kong"
 	"github.com/alexrjones/narc"
@@ -12,7 +13,7 @@ import (
 
 var CLI struct {
 	Start struct {
-		Name string `arg:"" name:"name" help:"Name of the activity to start."`
+		Name []string `arg:"" name:"nameparts" help:"Name of the activity to start."`
 	} `cmd:"" help:"Start an activity."`
 
 	End struct {
@@ -32,9 +33,9 @@ func main() {
 	}
 	ctx := kong.Parse(&CLI)
 	switch ctx.Command() {
-	case "start <name>":
+	case "start <nameparts>":
 		{
-			err = client.New(conf.ServerBaseURL, makeDaemon).StartActivity(CLI.Start.Name)
+			err = client.New(conf.ServerBaseURL, makeDaemon).StartActivity(strings.Join(CLI.Start.Name, " "))
 			if err != nil {
 				ctx.Errorf("error starting activity: %s", err)
 			}
