@@ -8,6 +8,7 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/alexrjones/narc"
 	"github.com/alexrjones/narc/client"
+	main2 "github.com/alexrjones/narc/cmd/narc"
 )
 
 var CLI struct {
@@ -48,7 +49,7 @@ func main() {
 		}
 	case "daemon":
 		{
-			daemonMain(conf)
+			main2.daemonMain(conf)
 		}
 	case "terminate":
 		{
