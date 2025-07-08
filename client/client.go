@@ -83,3 +83,20 @@ func (c *Client) StopActivity() error {
 	}
 	return nil
 }
+
+func (c *Client) TerminateDaemon() error {
+
+	post, err := c.cl.Post(c.baseURL+"/terminate", "text/plain", nil)
+	if err != nil {
+		return err
+	}
+	defer post.Body.Close()
+	b, err := io.ReadAll(post.Body)
+	if err != nil {
+		return err
+	}
+	if post.StatusCode != 200 {
+		return fmt.Errorf("unexpected status code in TerminateDaemon: %d, %s", post.StatusCode, b)
+	}
+	return nil
+}

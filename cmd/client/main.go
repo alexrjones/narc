@@ -16,6 +16,9 @@ var CLI struct {
 
 	End struct {
 	} `cmd:"" help:"End the current activity."`
+
+	Terminate struct {
+	} `cmd:"" help:"Terminate the daemon."`
 }
 
 func main() {
@@ -39,6 +42,13 @@ func main() {
 			err = cl.StopActivity()
 			if err != nil {
 				ctx.Errorf("error starting activity: %s", err)
+			}
+		}
+	case "terminate":
+		{
+			err = cl.TerminateDaemon()
+			if err != nil {
+				ctx.Errorf("error terminating daemon: %s", err)
 			}
 		}
 	default:

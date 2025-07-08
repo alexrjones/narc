@@ -7,9 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/alexrjones/narc"
@@ -41,14 +39,13 @@ func main() {
 	d.Run(context.Background())
 
 	port := cmp.Or(c.ServerBaseURL[strings.LastIndex(c.ServerBaseURL, ":")+1:], "8080")
-	serv := server.New(d)
+	channel := make(chan struct{}, 1)
+	serv := server.New(d, channel)
 	httpServer := &http.Server{Addr: "0.0.0.0:" + port, Handler: serv.GetHandler()}
 	go func() {
 		httpServer.ListenAndServe()
 	}()
 	// Wait for interrupt signal to gracefully shutdown the server with a timeout
-	channel := make(chan os.Signal, 1)
-	signal.Notify(channel, syscall.SIGINT, syscall.SIGTERM)
 	<-channel
 
 	// The context is used to inform the server it has N seconds to finish the request it is currently handling
