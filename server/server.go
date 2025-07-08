@@ -2,6 +2,7 @@ package server
 
 import (
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/alexrjones/narc/daemon"
@@ -63,6 +64,10 @@ func (s *Server) HandleStopActivity(rw http.ResponseWriter, r *http.Request) {
 
 func (s *Server) HandleTerminate(rw http.ResponseWriter, r *http.Request) {
 
+	err := s.d.StopActivity(r.Context())
+	if err != nil {
+		log.Println("Couldn't stop current activity:", err)
+	}
 	writeOK(rw)
 	s.termSignal <- struct{}{}
 }
