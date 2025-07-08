@@ -1,0 +1,85 @@
+package client
+
+import (
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"strings"
+	"time"
+)
+
+type Client struct {
+	baseURL  string
+	cl       *http.Client
+	mkDaemon func() error
+}
+
+func New(baseURL string, mkDaemon func() error) *Client {
+
+	return &Client{baseURL: baseURL, cl: &http.Client{}, mkDaemon: mkDaemon}
+}
+
+func (c *Client) ensureDaemonAlive() error {
+
+	_, err := c.cl.Get(c.baseURL + "/up")
+	if err == nil {
+		return nil
+	}
+	log.Print("Detected no daemon is running, trying to start one...")
+	err = c.mkDaemon()
+	if err != nil {
+		return fmt.Errorf("failed to start daemon: %s", err)
+	}
+
+	for range 3 {
+		_, err = c.cl.Get(c.baseURL + "/up")
+		if err != nil {
+			err = fmt.Errorf("daemon still not alive after startup: %s", err)
+		}
+		time.Sleep(time.Second)
+	}
+	return nil
+}
+
+func (c *Client) StartActivity(name string) error {
+
+	err := c.ensureDaemonAlive()
+	if err != nil {
+		return err
+	}
+	post, err := c.cl.Post(c.baseURL+"/start", "text/plain", strings.NewReader(name))
+	if err != nil {
+		return err
+	}
+	defer post.Body.Close()
+	b, err := io.ReadAll(post.Body)
+	if err != nil {
+		return err
+	}
+	if post.StatusCode != 200 {
+		return fmt.Errorf("unexpected status code in StartActivity: %d, %s", post.StatusCode, b)
+	}
+	return nil
+}
+
+func (c *Client) StopActivity() error {
+
+	err := c.ensureDaemonAlive()
+	if err != nil {
+		return err
+	}
+	post, err := c.cl.Post(c.baseURL+"/end", "text/plain", nil)
+	if err != nil {
+		return err
+	}
+	defer post.Body.Close()
+	b, err := io.ReadAll(post.Body)
+	if err != nil {
+		return err
+	}
+	if post.StatusCode != 200 {
+		return fmt.Errorf("unexpected status code in StopActivity: %d, %s", post.StatusCode, b)
+	}
+	return nil
+}

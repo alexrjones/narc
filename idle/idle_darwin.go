@@ -16,16 +16,18 @@ func IdleChan() <-chan narc.IdleState {
 	ch := make(chan narc.IdleState, 1)
 	var activeMu sync.Mutex
 	active := true
-	StartSleepWatcher(func(b bool) {
-		activeMu.Lock()
-		active = b
-		activeMu.Unlock()
-		if b {
-			ch <- narc.IdleState{Active: true, ChangeReason: narc.ChangeReasonSystemAwake}
-		} else {
-			ch <- narc.IdleState{Active: false, ChangeReason: narc.ChangeReasonSystemSleep}
-		}
-	})
+	go func() {
+		StartSleepWatcher(func(b bool) {
+			activeMu.Lock()
+			active = b
+			activeMu.Unlock()
+			if b {
+				ch <- narc.IdleState{Active: true, ChangeReason: narc.ChangeReasonSystemAwake}
+			} else {
+				ch <- narc.IdleState{Active: false, ChangeReason: narc.ChangeReasonSystemSleep}
+			}
+		})
+	}()
 	pollInterval := time.Second * 10
 	go func() {
 		for {

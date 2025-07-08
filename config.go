@@ -33,7 +33,12 @@ func getDataPath(subpath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, subpath), nil
+	root := filepath.Join(dir, ".narc")
+	err = os.MkdirAll(root, 0750)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(root, subpath), nil
 }
 
 func GetConfig() (*Config, error) {

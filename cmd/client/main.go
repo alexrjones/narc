@@ -1,33 +1,52 @@
 package main
 
-import "C"
 import (
-	"fmt"
-	"time"
+	"log"
+	"os/exec"
 
-	"github.com/alexrjones/narc/idle"
+	"github.com/alecthomas/kong"
+	"github.com/alexrjones/narc"
+	"github.com/alexrjones/narc/client"
 )
 
+var CLI struct {
+	Start struct {
+		Name string `arg:"" name:"name" help:"Name of the activity to start."`
+	} `cmd:"" help:"Start an activity."`
+
+	End struct {
+	} `cmd:"" help:"End the current activity."`
+}
+
 func main() {
-	fmt.Println("Starting sleep/wake watcher...")
-	idle.StartSleepWatcher(func(awake bool) {
-		if awake {
-			fmt.Println("Awake at", time.Now())
-		} else {
-			fmt.Println("Asleep at", time.Now())
+
+	conf, err := narc.GetConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+	cl := client.New(conf.ServerBaseURL, makeDaemon)
+	ctx := kong.Parse(&CLI)
+	switch ctx.Command() {
+	case "start <name>":
+		{
+			err = cl.StartActivity(CLI.Start.Name)
+			if err != nil {
+				ctx.Errorf("error starting activity: %s", err)
+			}
 		}
-	})
-	//
-	//ticker := time.NewTicker(10 * time.Second)
-	//defer ticker.Stop()
-	//for range ticker.C {
-	//	idle := getIdleSeconds()
-	//	if idle < 0 {
-	//		fmt.Println("Error getting idle time")
-	//	} else if idle > 300 {
-	//		fmt.Printf("Inactive for %.1f seconds\n", idle)
-	//	} else {
-	//		fmt.Printf("Active (idle %.1f seconds)\n", idle)
-	//	}
-	//}
+	case "end":
+		{
+			err = cl.StopActivity()
+			if err != nil {
+				ctx.Errorf("error starting activity: %s", err)
+			}
+		}
+	default:
+		panic(ctx.Command())
+	}
+}
+
+func makeDaemon() error {
+	cmd := exec.Command("go", "run", "/Users/alexander.jones/code/external/narc/cmd/daemon")
+	return cmd.Start()
 }

@@ -30,12 +30,10 @@ type current struct {
 
 func (c current) valid() bool {
 
-	return c != emptyCurrent && c.periodStart != time.Time{} && c.periodStartReason != 0
+	return c.activity != "" && c.activityKey != 0 && c.periodStart != time.Time{} && c.periodStartReason != 0
 }
 
 const activityNone = "(none)"
-
-var emptyCurrent = current{}
 
 func New(ctx context.Context, s Store) (*Daemon, error) {
 	d := &Daemon{
@@ -50,7 +48,7 @@ func New(ctx context.Context, s Store) (*Daemon, error) {
 
 func (d *Daemon) SetActivity(ctx context.Context, name string) error {
 	if d.current.valid() {
-		err := d.s.SavePeriod(ctx, d.current.activityKey, d.current.periodStart, time.Now(), d.current.periodStartReason, narc.ChangeReasonActivityChanged)
+		err := d.endPeriod(ctx, narc.ChangeReasonActivityChanged)
 		if err != nil {
 			return err
 		}
@@ -65,6 +63,17 @@ func (d *Daemon) SetActivity(ctx context.Context, name string) error {
 		periodStartReason: narc.ChangeReasonActivityChanged,
 		periodStart:       time.Now(),
 	}
+	return nil
+}
+
+func (d *Daemon) StopActivity(ctx context.Context) error {
+	if d.current.valid() {
+		err := d.endPeriod(ctx, narc.ChangeReasonExplicitStop)
+		if err != nil {
+			return err
+		}
+	}
+	d.current = current{}
 	return nil
 }
 

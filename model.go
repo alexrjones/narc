@@ -29,6 +29,7 @@ const (
 	ChangeReasonUserActive      ChangeReason = 3
 	ChangeReasonUserIdle        ChangeReason = 4
 	ChangeReasonActivityChanged ChangeReason = 5
+	ChangeReasonExplicitStop    ChangeReason = 6
 )
 
 func (cr ChangeReason) String() string {
@@ -43,6 +44,8 @@ func (cr ChangeReason) String() string {
 		return "User Idle"
 	case ChangeReasonActivityChanged:
 		return "Activity Changed"
+	case ChangeReasonExplicitStop:
+		return "Explicit Stop"
 	}
 	return fmt.Sprintf("unknown change reason %d", cr)
 }
