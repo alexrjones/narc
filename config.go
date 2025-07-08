@@ -39,8 +39,10 @@ func getDataPath(subpath string) (string, error) {
 	return filepath.Join(root, subpath), nil
 }
 
+const defaultPort = "53300"
+
 func GetConfig() (*Config, error) {
-	c := &Config{ServerBaseURL: "http://localhost:8080", StorageType: StorageTypeCSV}
+	c := &Config{ServerBaseURL: "http://localhost:" + defaultPort, StorageType: StorageTypeCSV}
 	if c.StorageType == StorageTypeCSV && c.CSVPath == "" {
 		var err error
 		c.CSVPath, err = getDataPath("narc.csv")

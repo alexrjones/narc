@@ -1,4 +1,4 @@
-package narc
+package main
 
 import (
 	"cmp"
@@ -33,7 +33,7 @@ func daemonMain(c *narc.Config) {
 	}
 	d.Run(context.Background())
 
-	port := cmp.Or(c.ServerBaseURL[strings.LastIndex(c.ServerBaseURL, ":")+1:], "8080")
+	port := cmp.Or(c.ServerBaseURL[strings.LastIndex(c.ServerBaseURL, ":")+1:], "80")
 	channel := make(chan struct{}, 1)
 	serv := daemon.NewServer(d, channel)
 	httpServer := &http.Server{Addr: "0.0.0.0:" + port, Handler: serv.GetHandler()}
