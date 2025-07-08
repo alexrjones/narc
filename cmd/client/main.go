@@ -1,11 +1,22 @@
 package main
 
 import "C"
-import "fmt"
+import (
+	"fmt"
+	"time"
+
+	"github.com/alexrjones/narc/idle"
+)
 
 func main() {
 	fmt.Println("Starting sleep/wake watcher...")
-	StartSleepWatcher()
+	idle.StartSleepWatcher(func(awake bool) {
+		if awake {
+			fmt.Println("Awake at", time.Now())
+		} else {
+			fmt.Println("Asleep at", time.Now())
+		}
+	})
 	//
 	//ticker := time.NewTicker(10 * time.Second)
 	//defer ticker.Stop()

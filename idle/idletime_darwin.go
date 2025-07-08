@@ -1,6 +1,6 @@
 //go:build darwin
 
-package main
+package idle
 
 /*
 #cgo LDFLAGS: -framework IOKit -framework CoreFoundation
