@@ -36,6 +36,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	makeDaemon := getMakeDaemon(conf)
 	ctx := kong.Parse(&CLI)
 	switch ctx.Command() {
 	case "start <nameparts>":
@@ -77,4 +78,15 @@ func main() {
 	}
 }
 
-var makeDaemon = exec.Command(os.Args[0], "daemon").Start
+func getMakeDaemon(c *narc.Config) func() error {
+	return func() error {
+		f, err := os.OpenFile(c.LogPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		cmd := exec.Command(os.Args[0], "daemon")
+		cmd.Stdout, cmd.Stderr = f, f
+		return cmd.Start()
+	}
+}

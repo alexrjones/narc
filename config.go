@@ -12,18 +12,23 @@ const (
 )
 
 type Config struct {
-	ServerBaseURL string      `split_words:"true" default:"http://localhost:8080"`
-	StorageType   StorageType `split_words:"true" default:"CSV"`
-	CSVPath       string      `split_words:"true"`
+	ServerBaseURL string
+	StorageType   StorageType
+	CSVPath       string
+	LogPath       string
 }
 
-func getConfigPath() (string, error) {
-
+func ensureDataDir() (string, error) {
 	dir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "narc.yaml"), nil
+	root := filepath.Join(dir, ".narc")
+	err = os.MkdirAll(root, 0750)
+	if err != nil {
+		return "", err
+	}
+	return root, nil
 }
 
 func getDataPath(subpath string) (string, error) {
@@ -42,14 +47,15 @@ func getDataPath(subpath string) (string, error) {
 const defaultPort = "53300"
 
 func GetConfig() (*Config, error) {
-	c := &Config{ServerBaseURL: "http://localhost:" + defaultPort, StorageType: StorageTypeCSV}
-	if c.StorageType == StorageTypeCSV && c.CSVPath == "" {
-		var err error
-		c.CSVPath, err = getDataPath("narc.csv")
-		if err != nil {
-			return nil, err
-		}
+	dataDir, err := ensureDataDir()
+	if err != nil {
+		return nil, err
 	}
-
+	c := &Config{
+		ServerBaseURL: "http://localhost:" + defaultPort,
+		StorageType:   StorageTypeCSV,
+		CSVPath:       filepath.Join(dataDir, "narc.csv"),
+		LogPath:       filepath.Join(dataDir, "narc.log"),
+	}
 	return c, nil
 }

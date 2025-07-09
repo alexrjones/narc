@@ -23,6 +23,10 @@ type (
 	ChangeReason uint32
 )
 
+func (i IdleState) String() string {
+	return fmt.Sprintf("Active: %t, ChangeReason: %s", i.Active, i.ChangeReason)
+}
+
 const (
 	ChangeReasonSystemAwake     ChangeReason = 1
 	ChangeReasonSystemSleep     ChangeReason = 2
@@ -50,5 +54,5 @@ func (cr ChangeReason) String() string {
 	case ChangeReasonDaemonExit:
 		return "Daemon Exit"
 	}
-	return fmt.Sprintf("unknown change reason %d", cr)
+	return fmt.Sprintf("(unknown change reason %d)", cr)
 }

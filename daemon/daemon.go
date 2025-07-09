@@ -116,6 +116,7 @@ func (d *Daemon) Run(ctx context.Context) {
 			select {
 			case state := <-idleCh:
 				{
+					log.Println("Received state change:", state)
 					d.mu.Lock()
 					if state.Active {
 						if d.current.validActivity() && d.current.shouldChange(state.ChangeReason) {
