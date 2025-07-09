@@ -40,13 +40,17 @@ func (c *Client) ensureDaemonAlive() error {
 	return nil
 }
 
-func (c *Client) StartActivity(name string) error {
+func (c *Client) StartActivity(name string, ignoreIdle bool) error {
 
 	err := c.ensureDaemonAlive()
 	if err != nil {
 		return err
 	}
-	post, err := c.cl.Post(c.baseURL+"/start", "text/plain", strings.NewReader(name))
+	url := c.baseURL + "/start"
+	if ignoreIdle {
+		url = url + "?ignoreIdle=true"
+	}
+	post, err := c.cl.Post(url, "text/plain", strings.NewReader(name))
 	if err != nil {
 		return err
 	}

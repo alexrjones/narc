@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/alexrjones/narc"
@@ -47,7 +48,13 @@ func (s *Server) HandleStartActivity(rw http.ResponseWriter, r *http.Request) {
 		http.Error(rw, "empty name sent in start activity", http.StatusBadRequest)
 		return
 	}
-	err = s.d.SetActivity(r.Context(), name)
+	ignoreIdle := false
+	ignoreIdleQ := r.URL.Query().Get("ignoreIdle")
+	if ignoreIdleParsed, err := strconv.ParseBool(ignoreIdleQ); err == nil {
+		ignoreIdle = ignoreIdleParsed
+	}
+
+	err = s.d.SetActivity(r.Context(), name, WithIgnoreIdle(ignoreIdle))
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
 		return

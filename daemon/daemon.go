@@ -26,6 +26,7 @@ type Daemon struct {
 type current struct {
 	activity          string
 	activityKey       ActivityKey
+	ignoreIdle        bool
 	periodStartReason narc.ChangeReason
 	periodStart       time.Time
 }
@@ -40,6 +41,13 @@ func (c current) validPeriod() bool {
 	return c.activity != "" && c.activityKey != 0 && c.periodStart != time.Time{} && c.periodStartReason != 0
 }
 
+func (c current) shouldChange(r narc.ChangeReason) bool {
+	if !c.ignoreIdle {
+		return true
+	}
+	return r == narc.ChangeReasonUserIdle || r == narc.ChangeReasonUserActive
+}
+
 func New(s Store) (*Daemon, error) {
 	d := &Daemon{
 		s: s,
@@ -47,9 +55,26 @@ func New(s Store) (*Daemon, error) {
 	return d, nil
 }
 
-func (d *Daemon) SetActivity(ctx context.Context, name string) error {
+type activityOptions struct {
+	ignoreIdle bool
+}
+
+type ActivityOption func(*activityOptions)
+
+func WithIgnoreIdle(b bool) ActivityOption {
+	return func(options *activityOptions) {
+		options.ignoreIdle = b
+	}
+}
+
+func (d *Daemon) SetActivity(ctx context.Context, name string, opts ...ActivityOption) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	options := &activityOptions{}
+	for _, o := range opts {
+		o(options)
+	}
+
 	if d.current.validPeriod() {
 		err := d.endPeriod(ctx, narc.ChangeReasonActivityChanged)
 		if err != nil {
@@ -63,6 +88,7 @@ func (d *Daemon) SetActivity(ctx context.Context, name string) error {
 	d.current = current{
 		activity:          name,
 		activityKey:       key,
+		ignoreIdle:        options.ignoreIdle,
 		periodStartReason: narc.ChangeReasonActivityChanged,
 		periodStart:       time.Now(),
 	}
@@ -92,11 +118,11 @@ func (d *Daemon) Run(ctx context.Context) {
 				{
 					d.mu.Lock()
 					if state.Active {
-						if d.current.validActivity() {
+						if d.current.validActivity() && d.current.shouldChange(state.ChangeReason) {
 							d.startPeriod(state.ChangeReason)
 						}
 					} else {
-						if d.current.validPeriod() {
+						if d.current.validPeriod() && d.current.shouldChange(state.ChangeReason) {
 							err := d.endPeriod(ctx, state.ChangeReason)
 							if err != nil {
 								log.Printf("Failed to end period: %s", err)

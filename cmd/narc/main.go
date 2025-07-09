@@ -13,6 +13,8 @@ import (
 
 var CLI struct {
 	Start struct {
+		Meeting bool `short:"m" help:"Runs in 'meeting mode': won't treat idle events as the end of an activity."`
+
 		Name []string `arg:"" name:"nameparts" help:"Name of the activity to start."`
 	} `cmd:"" help:"Start an activity."`
 
@@ -38,7 +40,7 @@ func main() {
 	switch ctx.Command() {
 	case "start <nameparts>":
 		{
-			err = client.New(conf.ServerBaseURL, makeDaemon).StartActivity(strings.Join(CLI.Start.Name, " "))
+			err = client.New(conf.ServerBaseURL, makeDaemon).StartActivity(strings.Join(CLI.Start.Name, " "), CLI.Start.Meeting)
 			if err != nil {
 				ctx.Errorf("error starting activity: %s", err)
 			}
