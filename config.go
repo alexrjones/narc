@@ -1,10 +1,13 @@
 package narc
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/goccy/go-yaml"
 )
 
@@ -15,10 +18,10 @@ const (
 )
 
 type Config struct {
-	ServerBaseURL string      `yaml:"serverBaseUrl,omitempty"`
-	StorageType   StorageType `yaml:"storageType,omitempty"`
-	CSVPath       string      `yaml:"csvPath,omitempty"`
-	LogPath       string      `yaml:"logPath,omitempty"`
+	ServerBaseURL string      `yaml:"serverBaseUrl,omitempty" validate:"omitempty,url"`
+	StorageType   StorageType `yaml:"storageType,omitempty" validate:"omitempty,oneof=CSV"`
+	CSVPath       string      `yaml:"csvPath,omitempty" validate:"omitempty,filepath"`
+	LogPath       string      `yaml:"logPath,omitempty" validate:"omitempty,filepath"`
 }
 
 func (c *Config) mergeInOther(o *Config) {
@@ -34,6 +37,33 @@ func (c *Config) mergeInOther(o *Config) {
 	if o.LogPath != "" {
 		c.LogPath = o.LogPath
 	}
+}
+
+func (c *Config) String() string {
+
+	bytes, err := yaml.MarshalWithOptions(c, yaml.Indent(2))
+	if err != nil {
+		return fmt.Sprintf("failed to marshal config: %s", err)
+	}
+	return string(bytes)
+}
+
+func (c *Config) PropertyByName(name string) string {
+
+	bytes, err := yaml.Marshal(c)
+	if err != nil {
+		return fmt.Sprintf("failed to marshal config: %s", err)
+	}
+	m := make(map[string]interface{})
+	err = yaml.Unmarshal(bytes, &m)
+	if err != nil {
+		return fmt.Sprintf("failed to unmarshal config to map: %s", err)
+	}
+	val, ok := m[name]
+	if !ok {
+		return fmt.Sprintf("no property named '%s' exists", name)
+	}
+	return fmt.Sprint(val)
 }
 
 func ensureDataDir() (string, error) {
@@ -71,7 +101,16 @@ func loadOrCreateConfig(dataDir string) (*Config, error) {
 		CSVPath:       filepath.Join(dataDir, "narc.csv"),
 		LogPath:       filepath.Join(dataDir, "narc.log"),
 	}
-	f, err := os.OpenFile(filepath.Join(dataDir, "config.yaml"), os.O_RDONLY|os.O_CREATE, 0644)
+	diskConf, err := loadDiskConfig(filepath.Join(dataDir, "config.yaml"))
+	if err != nil {
+		return nil, err
+	}
+	c.mergeInOther(diskConf)
+	return c, nil
+}
+
+func loadDiskConfig(path string) (*Config, error) {
+	f, err := os.OpenFile(path, os.O_RDONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, err
 	}
@@ -85,8 +124,91 @@ func loadOrCreateConfig(dataDir string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	c.mergeInOther(diskConf)
-	return c, nil
+	return diskConf, nil
+}
+
+func loadDiskConfigToMap(path string) (map[string]interface{}, error) {
+	f, err := os.OpenFile(path, os.O_RDONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	bytes, err := io.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+	diskConf := make(map[string]interface{})
+	err = yaml.Unmarshal(bytes, &diskConf)
+	if err != nil {
+		return nil, err
+	}
+	return diskConf, nil
+}
+
+func SetConfigOption(name, val string) error {
+	if val == "" {
+		return errors.New("option value was empty")
+	}
+	op := "set"
+	if val == "default" {
+		op = "del"
+	}
+	dataDir, err := ensureDataDir()
+	if err != nil {
+		return err
+	}
+	diskConfPath := filepath.Join(dataDir, "config.yaml")
+	dc, err := loadDiskConfigToMap(diskConfPath)
+	if err != nil {
+		return err
+	}
+	return updateDiskConfig(dc, name, val, op, diskConfPath)
+}
+
+func updateDiskConfig(m map[string]interface{}, name, value, op, path string) error {
+	if m == nil {
+		m = make(map[string]interface{})
+	}
+	if op == "set" {
+		m[name] = value
+	} else if op == "del" {
+		delete(m, name)
+	}
+
+	var action func(f *os.File) error
+	if len(m) > 0 {
+		// Marshal the new map to bytes
+		newBytes, err := yaml.Marshal(m)
+		if err != nil {
+			return err
+		}
+		// Unmarshal it back into a config with strict validation
+		newConf := new(Config)
+		err = yaml.UnmarshalWithOptions(newBytes, newConf,
+			yaml.DisallowUnknownField(),
+			yaml.Validator(validator.New(validator.WithRequiredStructEnabled())))
+		if err != nil {
+			return err
+		}
+		action = func(f *os.File) error {
+			err := f.Truncate(0)
+			if err != nil {
+				return err
+			}
+			return yaml.NewEncoder(f).Encode(newConf)
+		}
+	} else {
+		action = func(f *os.File) error {
+			return f.Truncate(0)
+		}
+	}
+	// If that passed, then let's save the new value back to disk
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return action(f)
 }
 
 func GetConfig() (*Config, error) {

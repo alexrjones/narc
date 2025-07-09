@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -28,6 +29,18 @@ var CLI struct {
 
 	Terminate struct {
 	} `cmd:"" help:"Terminate the daemon."`
+
+	Config struct {
+		Show struct {
+		} `cmd:"" help:"Prints current configuration."`
+		Get struct {
+			Name string `arg:"" name:"name" help:"Name of the config option."`
+		} `cmd:"" help:"Print the value of a config option."`
+		Set struct {
+			Name  string `arg:"" name:"name" help:"Name of the config option."`
+			Value string `arg:"" name:"value" help:"Value of the config option. The special value \"default\" will reset it to its default."`
+		} `cmd:"" help:"Set a config option."`
+	} `cmd:""`
 }
 
 func main() {
@@ -71,6 +84,21 @@ func main() {
 			err = client.New(conf.ServerBaseURL, makeDaemon).TerminateDaemon()
 			if err != nil {
 				ctx.Errorf("error terminating daemon: %s", err)
+			}
+		}
+	case "config show":
+		{
+			ctx.Printf("%s", conf)
+		}
+	case "config get <name>":
+		{
+			fmt.Println(conf.PropertyByName(CLI.Config.Get.Name))
+		}
+	case "config set <name> <value>":
+		{
+			err = narc.SetConfigOption(CLI.Config.Set.Name, CLI.Config.Set.Value)
+			if err != nil {
+				ctx.Errorf("failed to update config: %s", err)
 			}
 		}
 	default:
