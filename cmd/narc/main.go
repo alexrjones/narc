@@ -31,7 +31,7 @@ var CLI struct {
 
 		Start time.Time `arg:"" optional:"" name:"start" help:"Start of the period over which to aggregate." format:"2006-01-02"`
 		End   time.Time `arg:"" optional:"" name:"end" help:"End of the period over which to aggregate." format:"2006-01-02"`
-	} `cmd:"" help:"Aggregate time logs over the specified period."`
+	} `cmd:"" aliases:"agg" help:"Aggregate time logs over the specified period."`
 
 	Daemon struct{} `cmd:"" help:"Start the daemon."`
 
