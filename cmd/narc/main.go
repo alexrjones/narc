@@ -29,8 +29,8 @@ var CLI struct {
 	Aggregate struct {
 		Round bool `default:"true" help:"Round durations to the nearest 5 minutes."`
 
-		Start time.Time `arg:"" optional:"" name:"start" help:"Start of the period over which to aggregate." format:"2006-01-02"`
-		End   time.Time `arg:"" optional:"" name:"end" help:"End of the period over which to aggregate." format:"2006-01-02"`
+		Start string `arg:"" optional:"" name:"start" help:"Start of the period over which to aggregate. Use time.DateOnly format or 'yesterday', 'today', 'tomorrow'."`
+		End   string `arg:"" optional:"" name:"end" help:"End of the period over which to aggregate. Use time.DateOnly format or 'yesterday', 'today', 'tomorrow'."`
 	} `cmd:"" aliases:"agg" help:"Aggregate time logs over the specified period."`
 
 	Daemon struct{} `cmd:"" help:"Start the daemon."`
@@ -96,10 +96,18 @@ func main() {
 		}
 	case "aggregate", "aggregate <start>", "aggregate <start> <end>":
 		{
-			var agg string
-			agg, err = client.New(conf.ServerBaseURL, makeDaemon).Aggregate(CLI.Aggregate.Start, CLI.Aggregate.End, CLI.Aggregate.Round)
+			start, err := parseTimeString(CLI.Aggregate.Start)
 			if err != nil {
-				ctx.Errorf("error getting aggregate: %s", err)
+				ctx.Fatalf("error parsing start time: %s", err)
+			}
+			end, err := parseTimeString(CLI.Aggregate.End)
+			if err != nil {
+				ctx.Fatalf("error parsing end time: %s", err)
+			}
+			var agg string
+			agg, err = client.New(conf.ServerBaseURL, makeDaemon).Aggregate(start, end, CLI.Aggregate.Round)
+			if err != nil {
+				ctx.Fatalf("error getting aggregate: %s", err)
 			}
 			fmt.Print(agg)
 		}
@@ -121,6 +129,24 @@ func main() {
 	default:
 		panic(ctx.Command())
 	}
+}
+
+func parseTimeString(s string) (time.Time, error) {
+	if s == "" {
+		return time.Time{}, nil
+	}
+	now := time.Now()
+	s = strings.ToLower(s)
+	if s == "today" {
+		return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()), nil
+	} else if s == "tomorrow" {
+		now = now.Add(time.Hour * 24)
+		return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()), nil
+	} else if s == "yesterday" {
+		now = now.Add(time.Hour * -24)
+		return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()), nil
+	}
+	return time.Parse(time.DateOnly, s)
 }
 
 func getMakeDaemon(c *narc.Config) func() error {
