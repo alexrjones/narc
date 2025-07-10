@@ -1,10 +1,7 @@
 package idle
 
-import "C"
 import (
-	"fmt"
 	"syscall"
-	"time"
 	"unsafe"
 )
 
@@ -35,21 +32,6 @@ func makeSleepwatcher(onSleepStateChange func(awake bool)) syscallCallback {
 			uintptr(hwnd), uintptr(msg), wParam, lParam)
 		return ret
 	}
-}
-
-func wndProc(hwnd syscall.Handle, msg uint32, wParam, lParam uintptr) uintptr {
-	switch msg {
-	case WM_POWERBROADCAST:
-		switch wParam {
-		case PBT_APMSUSPEND:
-			fmt.Println("[Windows] System is going to sleep", time.Now())
-		case PBT_APMRESUMEAUTOMATIC:
-			fmt.Println("[Windows] System just woke up", time.Now())
-		}
-	}
-	ret, _, _ := procDefWindowProc.Call(
-		uintptr(hwnd), uintptr(msg), wParam, lParam)
-	return ret
 }
 
 func runMessageLoop(cb any) {
