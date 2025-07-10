@@ -99,6 +99,9 @@ func (c *CSV) GetActivities(ctx context.Context, start, end time.Time) ([]narc.A
 		}
 		lastActivity.Periods = append(lastActivity.Periods, row.Period)
 	}
+	if lastActivity.Name != "" {
+		ret = append(ret, lastActivity)
+	}
 	return ret, nil
 }
 
