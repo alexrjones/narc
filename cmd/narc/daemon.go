@@ -35,7 +35,7 @@ func daemonMain(c *narc.Config) {
 
 	port := cmp.Or(c.ServerBaseURL[strings.LastIndex(c.ServerBaseURL, ":")+1:], "80")
 	channel := make(chan struct{}, 1)
-	serv := daemon.NewServer(d, channel)
+	serv := daemon.NewServer(d, s, channel)
 	httpServer := &http.Server{Addr: "0.0.0.0:" + port, Handler: serv.GetHandler()}
 	go func() {
 		httpServer.ListenAndServe()

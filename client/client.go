@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	nurl "net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -119,7 +121,41 @@ func (c *Client) GetStatus() (string, error) {
 		return "", err
 	}
 	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("unexpected status code in TerminateDaemon: %d, %s", resp.StatusCode, b)
+		return "", fmt.Errorf("unexpected status code in GetStatus: %d, %s", resp.StatusCode, b)
+	}
+	return string(b), nil
+}
+
+func (c *Client) Aggregate(start, end time.Time, round bool) (string, error) {
+
+	err := c.ensureDaemonAlive()
+	if err != nil {
+		return "", err
+	}
+	url := c.baseURL + "/aggregate"
+	q := make(nurl.Values)
+	if !start.IsZero() {
+		q.Set("start", start.Format(time.DateOnly))
+	}
+	if !end.IsZero() {
+		q.Set("end", end.Format(time.DateOnly))
+	}
+	q.Set("round", strconv.FormatBool(round))
+	qs := q.Encode()
+	if qs != "" {
+		url = url + "?" + qs
+	}
+	resp, err := c.cl.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("unexpected status code in Aggregate: %d, %s", resp.StatusCode, b)
 	}
 	return string(b), nil
 }

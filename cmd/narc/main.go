@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/alecthomas/kong"
 	"github.com/alexrjones/narc"
@@ -24,6 +25,13 @@ var CLI struct {
 
 	Status struct {
 	} `cmd:"" help:"Get the current status of the daemon and activity."`
+
+	Aggregate struct {
+		Round bool `default:"true" help:"Round durations to the nearest 15 minutes."`
+
+		Start time.Time `arg:"" optional:"" name:"start" help:"Start of the period over which to aggregate." format:"2006-01-02"`
+		End   time.Time `arg:"" optional:"" name:"end" help:"End of the period over which to aggregate." format:"2006-01-02"`
+	} `cmd:"" help:"Aggregate time logs over the specified period."`
 
 	Daemon struct{} `cmd:"" help:"Start the daemon."`
 
@@ -85,6 +93,15 @@ func main() {
 			if err != nil {
 				ctx.Errorf("error terminating daemon: %s", err)
 			}
+		}
+	case "aggregate", "aggregate <start>", "aggregate <start> <end>":
+		{
+			var agg string
+			agg, err = client.New(conf.ServerBaseURL, makeDaemon).Aggregate(CLI.Aggregate.Start, CLI.Aggregate.End, CLI.Aggregate.Round)
+			if err != nil {
+				ctx.Errorf("error getting aggregate: %s", err)
+			}
+			fmt.Print(agg)
 		}
 	case "config show":
 		{

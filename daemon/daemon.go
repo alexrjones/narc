@@ -15,6 +15,7 @@ type ActivityKey int64
 type Store interface {
 	SaveActivity(ctx context.Context, name string) (ActivityKey, error)
 	SavePeriod(ctx context.Context, key ActivityKey, start, end time.Time, startReason, endReason narc.ChangeReason) error
+	GetActivities(ctx context.Context, start, end time.Time) ([]narc.Activity, error)
 }
 
 type Daemon struct {
