@@ -102,10 +102,10 @@ func (s *Server) HandleAggregateActivities(rw http.ResponseWriter, r *http.Reque
 	start, end := r.URL.Query().Get("start"), r.URL.Query().Get("end")
 	startTime, _ := time.Parse(time.DateOnly, start)
 	endTime, _ := time.Parse(time.DateOnly, end)
-	roundTo15MinsStr := r.URL.Query().Get("round")
-	roundTo15Mins := true
-	if v, err := strconv.ParseBool(roundTo15MinsStr); err == nil {
-		roundTo15Mins = v
+	roundStr := r.URL.Query().Get("round")
+	round := true
+	if v, err := strconv.ParseBool(roundStr); err == nil {
+		round = v
 	}
 	activities, err := s.s.GetActivities(r.Context(), startTime, endTime)
 	if err != nil {
@@ -117,8 +117,8 @@ func (s *Server) HandleAggregateActivities(rw http.ResponseWriter, r *http.Reque
 	csvw := csv.NewWriter(sb)
 	for _, row := range rows {
 		dur := row.Duration.Hours()
-		if roundTo15Mins {
-			dur = roundToNearestQuarter(dur)
+		if round {
+			dur = ceilToNearestFiveCents(dur)
 		}
 		csvw.Write([]string{row.Date.Format(time.DateOnly), row.Name, fmt.Sprintf("%.2f", dur)})
 	}
@@ -127,7 +127,15 @@ func (s *Server) HandleAggregateActivities(rw http.ResponseWriter, r *http.Reque
 }
 
 func roundToNearestQuarter(f float64) float64 {
+	return math.Round(f*4) / 4
+}
+
+func ceilToNearestQuarter(f float64) float64 {
 	return math.Ceil(f*4) / 4
+}
+
+func ceilToNearestFiveCents(f float64) float64 {
+	return math.Ceil(f*20) / 20
 }
 
 func writeOK(rw http.ResponseWriter) {

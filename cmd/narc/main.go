@@ -27,7 +27,7 @@ var CLI struct {
 	} `cmd:"" help:"Get the current status of the daemon and activity."`
 
 	Aggregate struct {
-		Round bool `default:"true" help:"Round durations to the nearest 15 minutes."`
+		Round bool `default:"true" help:"Round durations to the nearest 5 minutes."`
 
 		Start time.Time `arg:"" optional:"" name:"start" help:"Start of the period over which to aggregate." format:"2006-01-02"`
 		End   time.Time `arg:"" optional:"" name:"end" help:"End of the period over which to aggregate." format:"2006-01-02"`
