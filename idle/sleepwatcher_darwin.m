@@ -2,7 +2,7 @@
 #import <IOKit/pwr_mgt/IOPMLib.h>
 #import <IOKit/IOKitLib.h>
 #include <stdio.h>
-#include "sleepwatcher.h"
+#include "sleepwatcher_darwin.h"
 
 static void (*sleepCallback)(void) = NULL;
 static void (*wakeCallback)(void) = NULL;

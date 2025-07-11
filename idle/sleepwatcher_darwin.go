@@ -4,7 +4,7 @@ package idle
 
 /*
 #cgo LDFLAGS: -framework IOKit -framework CoreFoundation
-#include "sleepwatcher.h"
+#include "sleepwatcher_darwin.h"
 extern void onSystemSleep();
 extern void onSystemWake();
 */
