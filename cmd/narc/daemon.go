@@ -104,6 +104,8 @@ func daemonMain(c *narc.Config, logToFile bool, opts ...daemonOption) (invokeNex
 		return func() FuncYielder {
 			return daemonMain(c, logToFile, opts...)
 		}
+	} else {
+		log.Println("Server quit")
 	}
 	return nil
 }

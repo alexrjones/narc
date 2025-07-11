@@ -32,7 +32,9 @@ func (m *Monitor) Start(ctx context.Context) <-chan narc.IdleState {
 	systemAwake := true
 	go func() {
 		once.Do(func() {
-			StartSleepWatcher(sleepStateChanged)
+			go func() {
+				StartSleepWatcher(sleepStateChanged)
+			}()
 		})
 		sleepStateChangedCb = func(b bool) {
 			awakeMu.Lock()
