@@ -17,10 +17,10 @@ import (
 type Server struct {
 	d          *Daemon
 	s          Store
-	termSignal chan struct{}
+	termSignal chan SignalPacket
 }
 
-func NewServer(d *Daemon, s Store, termSignal chan struct{}) *Server {
+func NewServer(d *Daemon, s Store, termSignal chan SignalPacket) *Server {
 	return &Server{d: d, s: s, termSignal: termSignal}
 }
 
@@ -31,6 +31,7 @@ func (s *Server) GetHandler() http.Handler {
 	m.Handle("POST /start", http.HandlerFunc(s.HandleStartActivity))
 	m.Handle("POST /end", http.HandlerFunc(s.HandleStopActivity))
 	m.Handle("POST /terminate", http.HandlerFunc(s.HandleTerminate))
+	m.Handle("POST /reload", http.HandlerFunc(s.HandleConfigReload))
 	m.Handle("GET /status", http.HandlerFunc(s.HandleStatus))
 	m.Handle("GET /aggregate", http.HandlerFunc(s.HandleAggregateActivities))
 	return m
@@ -84,16 +85,20 @@ func (s *Server) HandleTerminate(rw http.ResponseWriter, r *http.Request) {
 		log.Println("Couldn't stop current activity:", err)
 	}
 	writeOK(rw)
-	s.termSignal <- struct{}{}
+	s.termSignal <- SignalPacket{Signal: SignalTerm}
 }
 
 func (s *Server) HandleStatus(rw http.ResponseWriter, r *http.Request) {
 
 	cur := s.d.getStatus()
-	if !cur.validPeriod() {
+	if !cur.validActivity() {
 		writeString(rw, "No activity set.")
 	} else {
-		writeString(rw, fmt.Sprintf("Current activity: %s\nStarted at: %s\nRunning for: %s", cur.activity, cur.periodStart.Format(time.RFC3339), time.Since(cur.periodStart)))
+		if cur.validPeriod() {
+			writeString(rw, fmt.Sprintf("Current activity: %s\nStarted at: %s\nRunning for: %s", cur.activity, cur.periodStart.Format(time.RFC3339), time.Since(cur.periodStart)))
+		} else {
+			writeString(rw, fmt.Sprintf("Current activity: %s\nCurrently idle (may not have polled for user activity yet)", cur.activity))
+		}
 	}
 }
 
@@ -124,6 +129,17 @@ func (s *Server) HandleAggregateActivities(rw http.ResponseWriter, r *http.Reque
 	}
 	csvw.Flush()
 	writeString(rw, sb.String())
+}
+
+func (s *Server) HandleConfigReload(rw http.ResponseWriter, r *http.Request) {
+
+	cur := s.d.getStatus()
+	err := s.d.StopActivity(r.Context(), narc.ChangeReasonDaemonExit)
+	if err != nil {
+		log.Println("Couldn't stop current activity:", err)
+	}
+	writeOK(rw)
+	s.termSignal <- SignalPacket{Signal: SignalHup, LastActivityName: cur.activity, LastActivityIgnoreIdle: cur.ignoreIdle}
 }
 
 func roundToNearestQuarter(f float64) float64 {

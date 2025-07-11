@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/alexrjones/narc"
-	"github.com/alexrjones/narc/idle"
 )
 
 type ActivityKey int64
@@ -22,6 +21,7 @@ type Daemon struct {
 	s       Store
 	current current
 	mu      sync.RWMutex
+	ch      <-chan narc.IdleState
 }
 
 type current struct {
@@ -49,9 +49,10 @@ func (c current) shouldChange(r narc.ChangeReason) bool {
 	return r == narc.ChangeReasonUserIdle || r == narc.ChangeReasonUserActive
 }
 
-func New(s Store) (*Daemon, error) {
+func New(s Store, ch <-chan narc.IdleState) (*Daemon, error) {
 	d := &Daemon{
-		s: s,
+		s:  s,
+		ch: ch,
 	}
 	return d, nil
 }
@@ -110,12 +111,10 @@ func (d *Daemon) StopActivity(ctx context.Context, reason narc.ChangeReason) err
 }
 
 func (d *Daemon) Run(ctx context.Context) {
-
-	idleCh := idle.IdleChan()
 	go func() {
 		for {
 			select {
-			case state := <-idleCh:
+			case state := <-d.ch:
 				{
 					log.Println("Received state change:", state)
 					d.mu.Lock()

@@ -2,9 +2,8 @@ module github.com/alexrjones/narc
 
 go 1.23.4
 
-require github.com/alecthomas/kong v1.12.0
-
 require (
+	github.com/alecthomas/kong v1.12.0
 	github.com/go-playground/validator/v10 v10.27.0
 	github.com/goccy/go-yaml v1.18.0
 )

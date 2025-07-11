@@ -1,21 +1,40 @@
 package idle
 
 import (
+	"context"
 	"sync"
 	"time"
 
 	"github.com/alexrjones/narc"
 )
 
-const idleThresh = 300
+type Monitor struct {
+	idleTimeout time.Duration
+}
 
-func IdleChan() <-chan narc.IdleState {
+func NewMonitor(timeout time.Duration) *Monitor {
+	return &Monitor{
+		idleTimeout: timeout,
+	}
+}
 
+var once sync.Once
+
+func sleepStateChanged(b bool) {
+	sleepStateChangedCb(b)
+}
+
+var sleepStateChangedCb = func(b bool) {}
+
+func (m *Monitor) Start(ctx context.Context) <-chan narc.IdleState {
 	ch := make(chan narc.IdleState, 1)
 	var awakeMu sync.Mutex
 	systemAwake := true
 	go func() {
-		StartSleepWatcher(func(b bool) {
+		once.Do(func() {
+			StartSleepWatcher(sleepStateChanged)
+		})
+		sleepStateChangedCb = func(b bool) {
 			awakeMu.Lock()
 			systemAwake = b
 			awakeMu.Unlock()
@@ -24,7 +43,7 @@ func IdleChan() <-chan narc.IdleState {
 			} else {
 				ch <- narc.IdleState{Active: false, ChangeReason: narc.ChangeReasonSystemSleep}
 			}
-		})
+		}
 	}()
 	userActive := true
 	pollInterval := time.Second * 10
@@ -41,7 +60,7 @@ func IdleChan() <-chan narc.IdleState {
 					awakeMu.Unlock()
 					idleSeconds := getIdleSeconds()
 					oldState := userActive
-					userActive = idleSeconds < idleThresh
+					userActive = float64(idleSeconds) < m.idleTimeout.Seconds()
 					if oldState != userActive {
 						if userActive {
 							ch <- narc.IdleState{Active: true, ChangeReason: narc.ChangeReasonUserActive}
@@ -50,6 +69,8 @@ func IdleChan() <-chan narc.IdleState {
 						}
 					}
 				}
+			case <-ctx.Done():
+				return
 			}
 		}
 	}()
