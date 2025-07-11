@@ -114,7 +114,3 @@ Config values are stored per user and control things like idle timeout and data 
 - The `daemon` must be running to track idle time.
 - All logs are stored locally.
 - narc uses platform-native APIs for idle detection (no polling loops or elevated privileges required).
-
-## License
-
-MIT
