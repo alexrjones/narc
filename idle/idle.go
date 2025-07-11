@@ -55,7 +55,7 @@ func (m *Monitor) Start(ctx context.Context) <-chan narc.IdleState {
 					awakeMu.Lock()
 					if !systemAwake {
 						awakeMu.Unlock()
-						return
+						continue
 					}
 					awakeMu.Unlock()
 					idleSeconds := getIdleSeconds()
