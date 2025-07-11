@@ -33,7 +33,9 @@ var CLI struct {
 		End   string `arg:"" optional:"" name:"end" help:"End of the period over which to aggregate. Use time.DateOnly format or 'yesterday', 'today', 'tomorrow'."`
 	} `cmd:"" aliases:"agg" help:"Aggregate time logs over the specified period."`
 
-	Daemon struct{} `cmd:"" help:"Start the daemon."`
+	Daemon struct {
+		LogToFile bool `help:"Whether the daemon should log to the configured logfile."`
+	} `cmd:"" help:"Start the daemon."`
 
 	Terminate struct {
 	} `cmd:"" help:"Terminate the daemon."`
@@ -57,7 +59,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	makeDaemon := getMakeDaemon(conf)
 	ctx := kong.Parse(&CLI)
 	switch ctx.Command() {
 	case "start <nameparts>":
@@ -80,12 +81,18 @@ func main() {
 			if err != nil {
 				ctx.Errorf("error getting status: %s", err)
 			} else {
-				ctx.Printf(res)
+				fmt.Println(res)
 			}
 		}
 	case "daemon":
 		{
-			daemonMain(conf)
+			invokeNext := daemonMain(conf, CLI.Daemon.LogToFile)
+			for {
+				if invokeNext == nil {
+					return
+				}
+				invokeNext = invokeNext()
+			}
 		}
 	case "terminate":
 		{
@@ -113,7 +120,7 @@ func main() {
 		}
 	case "config show":
 		{
-			ctx.Printf("%s", conf)
+			fmt.Println(conf)
 		}
 	case "config get <name>":
 		{
@@ -124,6 +131,10 @@ func main() {
 			err = narc.SetConfigOption(CLI.Config.Set.Name, CLI.Config.Set.Value)
 			if err != nil {
 				ctx.Errorf("failed to update config: %s", err)
+			}
+			err = client.New(conf.ServerBaseURL, makeDaemon).ReloadDaemonConfig()
+			if err != nil {
+				ctx.Errorf("error reloading daemon config: %s", err)
 			}
 		}
 	default:
@@ -149,15 +160,7 @@ func parseTimeString(s string) (time.Time, error) {
 	return time.Parse(time.DateOnly, s)
 }
 
-func getMakeDaemon(c *narc.Config) func() error {
-	return func() error {
-		f, err := os.OpenFile(c.LogPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		cmd := exec.Command(os.Args[0], "daemon")
-		cmd.Stdout, cmd.Stderr = f, f
-		return cmd.Start()
-	}
+func makeDaemon() error {
+	cmd := exec.Command(os.Args[0], "daemon", "--log-to-file")
+	return cmd.Start()
 }

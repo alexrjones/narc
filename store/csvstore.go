@@ -105,12 +105,13 @@ func (c *CSV) GetActivities(ctx context.Context, start, end time.Time) ([]narc.A
 	return ret, nil
 }
 
-func (c *CSV) Close() {
+func (c *CSV) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if wc, ok := c.handle.(io.Closer); ok {
 		wc.Close()
 	}
+	return nil
 }
 
 func NewCSVStore(h io.ReadWriteSeeker) *CSV {

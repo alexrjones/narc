@@ -21,15 +21,15 @@ func New(baseURL string, mkDaemon func() error) *Client {
 	return &Client{baseURL: baseURL, cl: &http.Client{}, mkDaemon: mkDaemon}
 }
 
-func (c *Client) ensureDaemonAlive() error {
+func (c *Client) ensureDaemonAlive() (didStartDaemon bool, err error) {
 
-	_, err := c.cl.Get(c.baseURL + "/up")
+	_, err = c.cl.Get(c.baseURL + "/up")
 	if err == nil {
-		return nil
+		return false, nil
 	}
 	err = c.mkDaemon()
 	if err != nil {
-		return fmt.Errorf("failed to start daemon: %s", err)
+		return true, fmt.Errorf("failed to start daemon: %s", err)
 	}
 
 	for range 3 {
@@ -39,12 +39,12 @@ func (c *Client) ensureDaemonAlive() error {
 		}
 		time.Sleep(time.Second)
 	}
-	return nil
+	return true, nil
 }
 
 func (c *Client) StartActivity(name string, ignoreIdle bool) error {
 
-	err := c.ensureDaemonAlive()
+	_, err := c.ensureDaemonAlive()
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func (c *Client) StartActivity(name string, ignoreIdle bool) error {
 
 func (c *Client) StopActivity() error {
 
-	err := c.ensureDaemonAlive()
+	_, err := c.ensureDaemonAlive()
 	if err != nil {
 		return err
 	}
@@ -105,9 +105,33 @@ func (c *Client) TerminateDaemon() error {
 	return nil
 }
 
+func (c *Client) ReloadDaemonConfig() error {
+
+	didStartDaemon, err := c.ensureDaemonAlive()
+	if err != nil {
+		return err
+	}
+	if didStartDaemon {
+		return nil
+	}
+	post, err := c.cl.Post(c.baseURL+"/reload", "text/plain", nil)
+	if err != nil {
+		return err
+	}
+	defer post.Body.Close()
+	b, err := io.ReadAll(post.Body)
+	if err != nil {
+		return err
+	}
+	if post.StatusCode != 200 {
+		return fmt.Errorf("unexpected status code in ReloadDaemonConfig: %d, %s", post.StatusCode, b)
+	}
+	return nil
+}
+
 func (c *Client) GetStatus() (string, error) {
 
-	err := c.ensureDaemonAlive()
+	_, err := c.ensureDaemonAlive()
 	if err != nil {
 		return "", err
 	}
@@ -128,7 +152,7 @@ func (c *Client) GetStatus() (string, error) {
 
 func (c *Client) Aggregate(start, end time.Time, round bool) (string, error) {
 
-	err := c.ensureDaemonAlive()
+	_, err := c.ensureDaemonAlive()
 	if err != nil {
 		return "", err
 	}

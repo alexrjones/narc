@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/goccy/go-yaml"
@@ -18,10 +19,11 @@ const (
 )
 
 type Config struct {
-	ServerBaseURL string      `yaml:"serverBaseUrl,omitempty" validate:"omitempty,url"`
-	StorageType   StorageType `yaml:"storageType,omitempty" validate:"omitempty,oneof=CSV"`
-	CSVPath       string      `yaml:"csvPath,omitempty" validate:"omitempty,filepath"`
-	LogPath       string      `yaml:"logPath,omitempty" validate:"omitempty,filepath"`
+	ServerBaseURL string        `yaml:"serverBaseUrl,omitempty" validate:"omitempty,url"`
+	StorageType   StorageType   `yaml:"storageType,omitempty" validate:"omitempty,oneof=CSV"`
+	CSVPath       string        `yaml:"csvPath,omitempty" validate:"omitempty,filepath"`
+	LogPath       string        `yaml:"logPath,omitempty" validate:"omitempty,filepath"`
+	IdleTimeout   time.Duration `yaml:"idleTimeout,omitempty" validate:"omitempty,gte=1s"`
 }
 
 func (c *Config) mergeInOther(o *Config) {
@@ -36,6 +38,9 @@ func (c *Config) mergeInOther(o *Config) {
 	}
 	if o.LogPath != "" {
 		c.LogPath = o.LogPath
+	}
+	if o.IdleTimeout != 0 {
+		c.IdleTimeout = o.IdleTimeout
 	}
 }
 
@@ -100,6 +105,7 @@ func loadOrCreateConfig(dataDir string) (*Config, error) {
 		StorageType:   StorageTypeCSV,
 		CSVPath:       filepath.Join(dataDir, "narc.csv"),
 		LogPath:       filepath.Join(dataDir, "narc.log"),
+		IdleTimeout:   time.Second * 300,
 	}
 	diskConf, err := loadDiskConfig(filepath.Join(dataDir, "config.yaml"))
 	if err != nil {
