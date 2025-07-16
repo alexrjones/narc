@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -27,7 +28,7 @@ var CLI struct {
 	} `cmd:"" help:"Get the current status of the daemon and activity."`
 
 	Aggregate struct {
-		Round bool `default:"true" help:"Round durations to the nearest 5 minutes."`
+		Round hourAmount `default:"15" help:"Round durations to the nearest X minutes. Defaults to 15."`
 
 		Start string `arg:"" optional:"" name:"start" help:"Start of the period over which to aggregate. Use time.DateOnly format or 'yesterday', 'today', 'tomorrow'."`
 		End   string `arg:"" optional:"" name:"end" help:"End of the period over which to aggregate. Use time.DateOnly format or 'yesterday', 'today', 'tomorrow'."`
@@ -51,6 +52,15 @@ var CLI struct {
 			Value string `arg:"" name:"value" help:"Value of the config option. The special value \"default\" will reset it to its default."`
 		} `cmd:"" help:"Set a config option."`
 	} `cmd:""`
+}
+
+type hourAmount int64
+
+func (h hourAmount) Validate() error {
+	if h < 0 || h > 60 {
+		return errors.New("invalid hour amount " + fmt.Sprint(h) + ", must be between 0 and 60 inclusive")
+	}
+	return nil
 }
 
 func main() {
@@ -112,7 +122,7 @@ func main() {
 				ctx.Fatalf("error parsing end time: %s", err)
 			}
 			var agg string
-			agg, err = client.New(conf.ServerBaseURL, makeDaemon).Aggregate(start, end, CLI.Aggregate.Round)
+			agg, err = client.New(conf.ServerBaseURL, makeDaemon).Aggregate(start, end, int64(CLI.Aggregate.Round))
 			if err != nil {
 				ctx.Fatalf("error getting aggregate: %s", err)
 			}

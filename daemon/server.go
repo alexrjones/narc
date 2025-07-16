@@ -108,9 +108,9 @@ func (s *Server) HandleAggregateActivities(rw http.ResponseWriter, r *http.Reque
 	startTime, _ := time.Parse(time.DateOnly, start)
 	endTime, _ := time.Parse(time.DateOnly, end)
 	roundStr := r.URL.Query().Get("round")
-	round := true
-	if v, err := strconv.ParseBool(roundStr); err == nil {
-		round = v
+	round := float64(4)
+	if v, err := strconv.ParseInt(roundStr, 10, 64); err == nil {
+		round = float64(60.0 / v)
 	}
 	activities, err := s.s.GetActivities(r.Context(), startTime, endTime)
 	if err != nil {
@@ -121,10 +121,7 @@ func (s *Server) HandleAggregateActivities(rw http.ResponseWriter, r *http.Reque
 	sb := new(strings.Builder)
 	csvw := csv.NewWriter(sb)
 	for _, row := range rows {
-		dur := row.Duration.Hours()
-		if round {
-			dur = ceilToNearestFiveCents(dur)
-		}
+		dur := ceilToNearestFraction(row.Duration.Hours(), round)
 		csvw.Write([]string{row.Date.Format(time.DateOnly), row.Name, fmt.Sprintf("%.2f", dur)})
 	}
 	csvw.Flush()
@@ -140,6 +137,13 @@ func (s *Server) HandleConfigReload(rw http.ResponseWriter, r *http.Request) {
 	}
 	writeOK(rw)
 	s.termSignal <- SignalPacket{Signal: SignalHup, LastActivityName: cur.activity, LastActivityIgnoreIdle: cur.ignoreIdle}
+}
+
+func ceilToNearestFraction(f float64, interval float64) float64 {
+	if interval == 0 {
+		return f
+	}
+	return math.Ceil(f*interval) / interval
 }
 
 func roundToNearestQuarter(f float64) float64 {
