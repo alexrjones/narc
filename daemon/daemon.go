@@ -46,7 +46,7 @@ func (c current) shouldChange(r narc.ChangeReason) bool {
 	if !c.ignoreIdle {
 		return true
 	}
-	return r == narc.ChangeReasonUserIdle || r == narc.ChangeReasonUserActive
+	return r != narc.ChangeReasonUserIdle && r != narc.ChangeReasonUserActive
 }
 
 func New(s Store, ch <-chan narc.IdleState) (*Daemon, error) {
