@@ -164,9 +164,7 @@ func (c *Client) Aggregate(start, end time.Time, round int64) (string, error) {
 	if !end.IsZero() {
 		q.Set("end", end.Format(time.DateOnly))
 	}
-	if round != 0 {
-		q.Set("round", strconv.FormatInt(round, 10))
-	}
+	q.Set("round", strconv.FormatInt(round, 10))
 	qs := q.Encode()
 	if qs != "" {
 		url = url + "?" + qs

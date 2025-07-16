@@ -110,7 +110,11 @@ func (s *Server) HandleAggregateActivities(rw http.ResponseWriter, r *http.Reque
 	roundStr := r.URL.Query().Get("round")
 	round := float64(4)
 	if v, err := strconv.ParseInt(roundStr, 10, 64); err == nil {
-		round = float64(60.0 / v)
+		if v == 0 {
+			round = 0
+		} else {
+			round = float64(60.0 / v)
+		}
 	}
 	activities, err := s.s.GetActivities(r.Context(), startTime, endTime)
 	if err != nil {
